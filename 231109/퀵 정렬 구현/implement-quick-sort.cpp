@@ -37,7 +37,7 @@ void quick_sort(int low, int high){
         arr[high] = temp;
 
         quick_sort(low, left);
-        quick_sort(left+1, high);
+        quick_sort(left+2, high);
 
     }
 }

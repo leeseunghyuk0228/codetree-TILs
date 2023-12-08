@@ -191,6 +191,8 @@ void move_roodolph()
 		}
 	}
 
+	if (ty == -1)return;
+
 	pair<int, int> dir = { 0, 0 };
 	if (ty < ry) { dir.first = -1; }
 	else if (ty > ry) { dir.first = 1; }

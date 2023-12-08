@@ -120,7 +120,7 @@ void Interaction(int origin, int sy, int sx, pair<int, int> dir)
 	// 0으로 끝났기 때문
 	while (!(ny == sy && nx == sx))
 	{
-		
+
 		int prevY = ny - dy;
 		int prevX = nx - dx;
 		if (!range_check(prevY, prevX))break;
@@ -197,6 +197,8 @@ void move_roodolph()
 
 	if (tx < rx) { dir.second = -1; }
 	else if (tx > rx) { dir.second = 1; }
+
+	if (dir.first == 0 && dir.second == 0) return;
 
 	roodolph.y += dir.first;
 	roodolph.x += dir.second;

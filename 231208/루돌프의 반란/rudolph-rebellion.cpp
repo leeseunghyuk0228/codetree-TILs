@@ -201,13 +201,12 @@ void move_roodolph()
 	roodolph.y += dir.first;
 	roodolph.x += dir.second;
 
-	int idx = MAP[roodolph.y][roodolph.x];
 
-	if (idx != 0)
+	if (MAP[roodolph.y][roodolph.x] != 0)
 	{
-		santa[idx].point += C;
-		santa[idx].stun_turn = t + 2;
-		collision(idx,C,dir);
+		santa[MAP[roodolph.y][roodolph.x]].point += C;
+		santa[MAP[roodolph.y][roodolph.x]].stun_turn = t + 2;
+		collision(MAP[roodolph.y][roodolph.x],C,dir);
 	}
 
 }

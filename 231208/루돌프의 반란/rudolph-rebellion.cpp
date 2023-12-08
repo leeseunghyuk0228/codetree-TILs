@@ -1,6 +1,5 @@
 #include <iostream>
 #include <queue>
-#include <vector>
 #define SIZE 51
 using namespace std;
 
@@ -93,75 +92,65 @@ bool range_check(int y, int x)
 
 void Interaction(int origin, int sy, int sx, pair<int, int> dir)
 {
-	vector<pair<int, int>> v;
+
+	// sy , sx : 산타가 밀려나서 안착할 장소
 	int dy = dir.first;
 	int dx = dir.second;
-	int firsty = sy, firstx = sx;
 	int ny = sy + dy;
 	int nx = sx + dx;
 
-	while (MAP[ny][nx] == 0 || range_check(ny, nx))
+	// ny, nx부터 쭉 확인, 범위 초과하거나 0이 나올때 까지
+	while (MAP[ny][nx] > 0 && range_check(ny, nx))
 	{
-		ny += dy;
-		nx += dx;
+		ny += dy; nx += dx;
 	}
 
-	while (!(ny == firsty && nx == firstx))
+	// 마지막 위치는 범위를 초과했거나, 0인 지역
+	// 범위를 초과한 지역의 이전 산타는 탈락시키고, 그 지역부터 다시 시작
+	if (!range_check(ny, nx))
 	{
-		int idx = MAP[ny - dy][nx - dx];
-		if (range_check(ny, nx))
-		{
-			MAP[ny][nx] = idx;
-			santa[idx].y = ny;
-			santa[idx].x = nx;
-		}
-		else
-		{
-			if (idx != 0)
-
-			{
-				santa[idx].range_out = 1;
-				cnt++;
-			}
-		}
-
-		MAP[ny - dy][nx - dx] = 0;
-		ny -= dy;
-		nx -= dx;
-
+		ny -= dy; nx -= dx;
+		santa[MAP[ny][nx]].range_out = 1;
+		MAP[ny][nx] = 0;
 	}
 
+	// 여기부터는 초기 확인 지역(sy+dy, sx+dx)까지 확인하며, 내 이전을 나로 옮긴다.
+	// 초기 ny nx는 무조건 0이다
+	// 범위를 초과해서 내 전을 0으로 만들었거나
+	// 0으로 끝났기 때문
+	while (!(ny == sy && nx == sx))
+	{
+		
+		int prevY = ny - dy;
+		int prevX = nx - dx;
+		if (!range_check(prevY, prevX))break;
+
+		int idx = MAP[prevY][prevX];
+
+		// 내 이전에 아무도 없다 ->? 내 위치로 옮길 산타가 없음 
+		if (idx == 0) {
+			MAP[ny][nx] = 0;
+			break;
+		}
+
+		MAP[ny][nx] = idx;
+		santa[idx].y = ny;
+		santa[idx].x = nx;
+
+		ny = prevY;
+		nx = prevX;
+	}
+
+	// 산타를 준비된 sy, sx에 안착시킨다.
 	MAP[sy][sx] = origin;
+	santa[origin].y = sy;
+	santa[origin].x = sx;
 }
 
-void collision_rooldolph_to_santa(int roodolph_y, int roodolph_x, pair<int, int> dir)
+void collision(int idx, int v, pair<int, int> dir)
 {
-
-	// 튕겨나갈 산타의 번호 idx, 산타의 다음 위치 ny,nx
-	int idx = MAP[roodolph_y][roodolph_x];
-	int ny = santa[idx].y + (dir.first) * C;
-	int nx = santa[idx].x + (dir.second) * C;
-
-	// 일단 현재 산타자리 초기화
-	MAP[santa[idx].y][santa[idx].x] = 0;
-
-	if (!range_check(ny, nx))
-	{
-		santa[idx].range_out = 1;
-		cnt++;
-		return;
-	}
-	santa[idx].y = ny;
-	santa[idx].x = nx;
-	if (MAP[ny][nx] != 0) Interaction(idx, ny, nx, dir);
-	else MAP[ny][nx] = idx;
-}
-
-
-void collision_santa_to_roodolph(int idx, int sy, int sx, pair<int, int> dir)
-{
-	int ny = sy + (dir.first * D);
-	int nx = sx + (dir.second * D);
+	int ny = roodolph.y + (dir.first * v);
+	int nx = roodolph.x + (dir.second * v);
 
 	MAP[santa[idx].y][santa[idx].x] = 0;
 
@@ -171,25 +160,28 @@ void collision_santa_to_roodolph(int idx, int sy, int sx, pair<int, int> dir)
 		santa[idx].range_out = 1;
 		return;
 	}
-	santa[idx].y = ny;
-	santa[idx].x = nx;
 
 	if (MAP[ny][nx] != 0) Interaction(idx, ny, nx, dir);
-	else MAP[ny][nx] = idx;
+	else
+	{
+		MAP[ny][nx] = idx;
+		santa[idx].y = ny;
+		santa[idx].x = nx;
+	}
 
 }
 
 void move_roodolph()
 {
 	int MIN = 21e8, ty = -1, tx = -1;
-
+	int ry = roodolph.y;
+	int rx = roodolph.x;
 
 	for (int i = 1; i <= P; i++)
 	{
 		Node now = santa[i];
-		if (now.range_out) continue;
+		if (now.range_out == 1) continue;
 		int dist = get_dist(now.y, now.x, roodolph.y, roodolph.x);
-
 		if (dist > MIN)continue;
 		if (dist < MIN || (now.y > ty) || (now.y >= ty) && (now.x > tx))
 		{
@@ -200,23 +192,24 @@ void move_roodolph()
 	}
 
 	pair<int, int> dir = { 0, 0 };
-	if (ty < roodolph.y) { dir.first = -1; }
-	else if (ty > roodolph.y) { dir.first = 1; }
+	if (ty < ry) { dir.first = -1; }
+	else if (ty > ry) { dir.first = 1; }
 
-	if (tx < roodolph.x) { dir.second = -1; }
-	else if (tx > roodolph.x) { dir.second = 1; }
+	if (tx < rx) { dir.second = -1; }
+	else if (tx > rx) { dir.second = 1; }
 
 	roodolph.y += dir.first;
 	roodolph.x += dir.second;
 
-	// 산타 있음 -> 충돌
-	if (roodolph.y == ty && roodolph.x == tx)
-	{
+	int idx = MAP[roodolph.y][roodolph.x];
 
-		santa[MAP[ty][tx]].point += C;
-		santa[MAP[ty][tx]].stun_turn = t + 2;
-		collision_rooldolph_to_santa(ty, tx, dir);
+	if (idx != 0)
+	{
+		santa[idx].point += C;
+		santa[idx].stun_turn = t + 2;
+		collision(idx,C,dir);
 	}
+
 }
 
 void move_santa()
@@ -230,6 +223,7 @@ void move_santa()
 		if (now.range_out) continue;
 		if (now.stun_turn > t) continue;
 		if (now.stun_turn == t) santa[i].stun_turn = 0;
+
 		int dist = get_dist(now.y, now.x, ry, rx);
 		int ty = -1;
 		int tx = -1;
@@ -241,7 +235,7 @@ void move_santa()
 			int nx = now.x + xdir[j];
 
 			if (!range_check(ny, nx))continue;
-			if (MAP[ny][nx]) continue;
+			if (MAP[ny][nx]!=0) continue;
 
 			int dist2 = get_dist(ny, nx, ry, rx);
 			if (dist > dist2)
@@ -254,12 +248,7 @@ void move_santa()
 
 		}
 
-		// 움직이지 않는다.
-		if (ty == -1)
-		{
-			continue;
-		}
-		// 루돌프와 부딪혔다
+		if (ty == -1) continue;
 		else if (ty == ry && tx == rx)
 		{
 			santa[i].point += D;
@@ -270,7 +259,7 @@ void move_santa()
 			else if (dir == 3)dir = 1;
 			else if (dir == 2) dir = 0;
 
-			collision_santa_to_roodolph(i, ty, tx, { ydir[dir],xdir[dir] });
+			collision(i,D,{ydir[dir],xdir[dir]});
 		}
 		else
 		{
@@ -286,7 +275,7 @@ void bonus_point()
 {
 	for (int i = 1; i <= P; i++)
 	{
-		if (santa[i].range_out == 0)santa[i].point++;
+		if (!santa[i].range_out)santa[i].point++;
 	}
 }
 
@@ -294,15 +283,13 @@ void bonus_point()
 int main()
 {
 	ios_base::sync_with_stdio(false); cin.tie(0); cout.tie(0);
-
 	input();
 	while (t <= M)
 	{
-
 		move_roodolph();
 		move_santa();
-		if (cnt == P)break;
 		bonus_point();
+		if (cnt == P)break;
 		t++;
 	}
 

@@ -148,6 +148,7 @@ void collision_rooldolph_to_santa(int roodolph_y, int roodolph_x, pair<int, int>
 	if (!range_check(ny, nx))
 	{
 		santa[idx].range_out = 1;
+		cnt++;
 		return;
 	}
 	santa[idx].y = ny;

@@ -10,6 +10,7 @@ struct soldier
 	int y, x;
 	int h,w;
 	int health;
+	int dmg=0;
 	int is_alive = 1;
 }sol[31];
 
@@ -50,57 +51,83 @@ void delete_map(int id)
 		for (int x = now.x; x <= now.x + now.w; x++)
 			MAP[y][x] = 0;
 }
-// 현재 아이디를 한칸 옮긴다.
-bool move_and_check_damage(int temp_id, int dir)
+
+bool move_and_check_damage(int origin, int temp_id, int dir)
 {
 	soldier now = sol[temp_id];
-	for (int y = now.y; y <= now.y + now.h; y++)
-		for (int x = now.x; x <= now.x + now.w; x++)
-			if (MAP_info[y + ydir[dir]][x + xdir[dir]] == 2) return false;
-
 	delete_map(temp_id);
-	
 
 	sol[temp_id].y += ydir[dir];
 	sol[temp_id].x += xdir[dir];
-
 	for (int y = now.y; y <= now.y + now.h; y++) {
 		for (int x = now.x; x <= now.x + now.w; x++) {
 			MAP[y + ydir[dir]][x + xdir[dir]] = temp_id;
-			if (MAP_info[y][x] == 1)
-			{
-				ans++;
-				sol[temp_id].health--;
-			}
+			if (temp_id == origin)continue;
+			if (MAP_info[y + ydir[dir]][x + xdir[dir]] == 1)
+				sol[temp_id].dmg++;
 		}
 	}
-	
-	if (sol[temp_id].health == 0) delete_map(temp_id);
+	if (sol[temp_id].health == sol[temp_id].dmg)
+	{
+		sol[temp_id].is_alive = 0;
+		delete_map(temp_id);
+	}
 	return true;
+}
+
+bool is_valid(int id,int dir)
+{
+	soldier now = sol[id];
+	for (int y = now.y; y <= now.y + now.h; y++)
+	{
+		for (int x = now.x; x <= now.x + now.w; x++)
+		{
+			int ny = y + ydir[dir];
+			int nx = x + xdir[dir];
+			if (!range_check(ny, nx))return false;
+			if (MAP_info[y + ydir[dir]][x + xdir[dir]] == 2) return false;
+		}
+	}
+	return true;
+}
+
+void range_set(int arr[4], int id, int dir)
+{
+	//arr[4] = {sy,sx,ly,lx}
+	soldier now = sol[id];
+	if (dir %2==0)
+	{
+		if (dir == 2) arr[0] = arr[2] = sol[id].y + sol[id].h;
+		else arr[0] = arr[2] = sol[id].y;
+		arr[1] = sol[id].x;
+		arr[3] = arr[1] + sol[id].w;
+	}
+	else
+	{
+		if (dir == 1) arr[1] = arr[3] = now.x + now.w;
+		else arr[1] = arr[3] = now.x;
+		arr[0] = sol[id].y;
+		arr[2] = arr[0] + sol[id].h;
+	}
 }
 
 void move(int id, int dir)
 {
 	int DAT[31] = { 0, };
-	int sy, sx, ly, lx;
+	int r[4];
 	DAT[id] = 1;
-	sy = ly = sol[id].y;
-	sx = lx = sol[id].x;
-	
+	range_set(r, id, dir);
 	if (!sol[id].is_alive)return;
 
-	// 0:상, 1:우, 2:하, 3:좌
 	if (dir % 2 == 0)
 	{
-		lx = lx + sol[id].w;
-		if (dir == 2) sy += sol[id].h;
 		stack<int> s;
 		s.push(id);
-		for (int nowx = sx; nowx <= lx; nowx++)
+		for (int nowx = r[1]; nowx <= r[3]; nowx++)
 		{
 			while (1)
 			{
-				int nowy = sy + ydir[dir];
+				int nowy = r[0] + ydir[dir];
 				// 다음이 0이면 이동 가능, 멈춘다.
 				if (MAP[nowy][nowx] == 0)break;
 				// 벽이다(범위)
@@ -109,9 +136,10 @@ void move(int id, int dir)
 				if (MAP_info[nowy][nowx] == 2)return;
 				// 이미 저장한 녀석
 				if (DAT[MAP[nowy][nowx]])continue;
+				if (!is_valid(MAP[nowy][nowx],dir))return;
 				DAT[MAP[nowy][nowx]] = 1;
 				s.push(MAP[nowy][nowx]);
-				sy = nowy;
+				r[0] = nowy;
 				
 			}
 		}
@@ -119,40 +147,49 @@ void move(int id, int dir)
 		while (!s.empty())
 		{
 			int temp_id = s.top();
-			if (!move_and_check_damage(temp_id, dir))break;
+			if (!move_and_check_damage(id,temp_id, dir))break;
 			s.pop();
 		}
 	}
 	else
 	{
-		// 우, 좌
-		// y값 고정, x 값 변경
-		ly = ly + sol[id].h;
-		if (dir == 3) sx = sol[id].h;
 		stack<int> s;
 		s.push(id);
 
-		for (int nowy = sy; nowy <= ly; nowy++)
+		for (int nowy = r[0]; nowy <= r[2]; nowy++)
 		{
-			int nowx = sx + xdir[dir];
-			if (MAP[nowy][nowx] == 0)break;
-			if (!range_check(nowy, nowx))return;
-			if (MAP_info[nowy][nowx] == 2)return;
-			if (DAT[MAP[nowy][nowx]])continue;
-			DAT[MAP[nowy][nowx]] = 1;
-			s.push(MAP[nowy][nowx]);
+			while (1)
+			{
+				int nowx = r[1] + xdir[dir];
+				if (MAP[nowy][nowx] == 0)break;
+				if (!range_check(nowy, nowx))return;
+				if (MAP_info[nowy][nowx] == 2)return;
+				if (DAT[MAP[nowy][nowx]])continue;
+				if (!is_valid(MAP[nowy][nowx], dir))return;
+				DAT[MAP[nowy][nowx]] = 1;
+				s.push(MAP[nowy][nowx]);
+				r[1] = nowx;
+			}
 		}
 
 		while (!s.empty())
 		{
 			int temp_id = s.top();
-			if (!move_and_check_damage(temp_id, dir))break;
+			if (!move_and_check_damage(id,temp_id, dir))break;
 			s.pop();
 		}
 	}
+}
 
-	
-
+void PRINT()
+{
+	for (int i = 1; i <= L; i++)
+	{
+		for (int j = 1; j <= L; j++)
+		{
+			cout << MAP[i][j];
+		}cout << '\n';
+	}cout << '\n';
 }
 
 int main()
@@ -165,6 +202,8 @@ int main()
 		cin >> id >> dir;
 		move(id, dir);
 	}
+
+	for (int i = 1; i <= N; i++) if (sol[i].is_alive) ans += sol[i].dmg;
 	cout << ans;
 
 }
